@@ -127,11 +127,17 @@ def verifica_precedencia(solucao, precedencias):
 
 def cria_solucao_inicial(numero_de_maquinas, custos, matriz):
     # Função para criar a solução inicial aleatória respeitando as precedências
+    
     numero_de_tarefas = len(matriz)
     solucao = []
+    
+    # Distribui as tarefas aleatoriamente entre as máquinas
     numero_de_tarefas_por_maquina = distribuir_tarefas_aleatoriamente(numero_de_maquinas, numero_de_tarefas)
+    
+    # Gera uma sequência de tarefas respeitando as precedências
     sequencia_de_tarefas = gerar_sequencia(numero_de_tarefas, matriz)
 
+    # Distribui as tarefas para cada máquina com base na sequência gerada
     for maquina in range(numero_de_maquinas):
         tarefas_por_maquina = []
         for _ in range(int(numero_de_tarefas_por_maquina[maquina])):
@@ -139,46 +145,50 @@ def cria_solucao_inicial(numero_de_maquinas, custos, matriz):
                 tarefas_por_maquina.append(sequencia_de_tarefas.pop(0))
         solucao.append(tarefas_por_maquina)
 
-    fo_inicial = calcular_fo(solucao, custos)
+    fo_inicial = calcular_fo(solucao, custos)  # Calcula o FO da solução inicial
     return solucao, fo_inicial
 
 # Heurísticas
 
 def busca_local(solucao, custos, precedencias):
-
-    solucao_melhorada = [maquina[:] for maquina in solucao]
+    """
+    Aplica uma busca local para tentar melhorar a solução atual.
+    Troca tarefas entre máquinas e verifica se a nova solução é melhor.
+    """
+    solucao_melhorada = [maquina[:] for maquina in solucao]  # Copia a solução atual
     fo_melhorada = calcular_fo(solucao_melhorada, custos)
 
     numero_de_maquinas = len(solucao)
     melhor_fo = fo_melhorada
     melhor_solucao = solucao_melhorada
 
+    # Tenta trocar tarefas entre pares de máquinas para melhorar o FO
     for i in range(numero_de_maquinas):
         for j in range(i + 1, numero_de_maquinas):
             for t1 in solucao_melhorada[i]:
                 for t2 in solucao_melhorada[j]:
 
-                    # cria uma nova solução
+                    # Cria uma nova solução a partir da troca de tarefas
                     nova_solucao = [maquina[:] for maquina in solucao_melhorada]
                     
-                    # Troca as tarefas de máquina
+                    # Troca as tarefas entre as máquinas
                     nova_solucao[i].remove(t1)
                     nova_solucao[j].remove(t2)
                     nova_solucao[i].append(t2)
                     nova_solucao[j].append(t1)
 
                     if not verifica_precedencia(nova_solucao, precedencias):
-                        continue
+                        continue  # Se a nova solução violar precedências, ignora
 
                     nova_fo = calcular_fo(nova_solucao, custos)
 
                     if nova_fo < melhor_fo:
-                        melhor_fo = nova_fo
-                        melhor_solucao = nova_solucao
+                        melhor_fo = nova_fo  # Atualiza o melhor FO encontrado
+                        melhor_solucao = nova_solucao  # Atualiza a melhor solução
 
     return melhor_solucao, melhor_fo
 
-def perturbacao(historico, solucao_atual, precedencias, max_tentativas=100):
+def perturbacao(historico, solucao_atual, precedencias, max_tentativas=200):
 
     numero_de_maquinas = len(solucao_atual)
 
@@ -229,66 +239,87 @@ def aceitacao(S, S_perturbada, custos, historico):
     return S
 
 def ils(numero_de_maquinas, custos, matriz, log_file):
-
+    # Inicia o tempo de execução
     tempo_inicio = time.time()
+    
+    # Define o tempo máximo de execução para o ILS (Iterated Local Search)
     ILSmax = 60
+    
+    # Constrói as precedências a partir da matriz fornecida
     precedencias = construir_precedencias(matriz)
 
+    # Gera a solução inicial e calcula o tempo para encontrá-la
     inicio_solucao_inicial = time.time()
     solucao_inicial, fo_inicial = cria_solucao_inicial(numero_de_maquinas, custos, matriz)
     tempo_solucao_inicial = time.time() - inicio_solucao_inicial
     
+    # Inicializa as variáveis com a melhor solução encontrada (que inicialmente é a solução inicial)
     melhor_solucao = solucao_inicial
     melhor_fo = fo_inicial
-    tempo_para_melhor_fo = tempo_solucao_inicial
+    tempo_para_melhor_fo = tempo_solucao_inicial  # Tempo para encontrar o melhor FO (inicialmente o tempo da solução inicial)
 
+    # Imprime os resultados da solução inicial
     imprime_resultados(solucao_inicial, fo_inicial, tempo_solucao_inicial, "Solução Inicial", log_file)
 
+    # Realiza busca local a partir da solução inicial
     inicio_busca_local = time.time()
     solucao_atual, fo_busca_local = busca_local(solucao_inicial, custos, precedencias)
     tempo_busca_local = time.time() - inicio_busca_local
 
+    # Atualiza a melhor solução se a busca local encontrar uma solução com FO menor
     if fo_busca_local < melhor_fo:
         melhor_solucao = solucao_atual
         melhor_fo = fo_busca_local
-        tempo_para_melhor_fo = tempo_solucao_inicial + tempo_busca_local
+        tempo_para_melhor_fo = tempo_solucao_inicial + tempo_busca_local  # Atualiza o tempo para o melhor FO
 
+    # Inicializa o histórico de soluções com a solução atual
     historico = [solucao_atual]
-    tempo_execucao_total = tempo_solucao_inicial + tempo_busca_local  # Tempo total até agora
-    lista_tempo_melhor_fo = [tempo_para_melhor_fo]
+    tempo_execucao_total = tempo_solucao_inicial + tempo_busca_local  # Calcula o tempo total até o momento
+    lista_tempo_melhor_fo = [tempo_para_melhor_fo]  # Lista com tempos em que o melhor FO foi encontrado
 
-    # {FO: Tempo de execução total quando a solução foi encontrada}
+    # Histórico com FO e o tempo em que ele foi encontrado
     historico_fo_tempo = {fo_inicial: tempo_solucao_inicial}
 
+    # Loop principal do algoritmo ILS
     while True:
-        tempo_decorrido = time.time() - tempo_inicio
-        sys.stdout.write(f"\rTempo decorrido: {tempo_decorrido:.2f} segundos")
-        sys.stdout.flush()
+        tempo_decorrido = time.time() - tempo_inicio  # Verifica o tempo decorrido
 
+        # Verifica se o tempo máximo foi atingido
         if tempo_decorrido >= ILSmax:
             print("\nTempo limite atingido.")
             break
 
+        # Aplica uma perturbação na solução atual para explorar outras áreas do espaço de busca
         solucao_perturbada = perturbacao(historico, solucao_atual, precedencias)
+
+        # Realiza busca local a partir da solução perturbada
         solucao_perturbada, fo_perturbada_busca_local = busca_local(solucao_perturbada, custos, precedencias)
+
+        # Aplica o critério de aceitação para definir a nova solução atual
         solucao_atual = aceitacao(solucao_atual, solucao_perturbada, custos, historico)
+
+        # Adiciona a nova solução ao histórico
         historico.append(solucao_atual)
 
-        # Atualiza o tempo total e registra o FO
+        # Atualiza o tempo de execução total
         tempo_execucao_total = time.time() - tempo_inicio
-        historico_fo_tempo[fo_perturbada_busca_local] = tempo_execucao_total
+        historico_fo_tempo[fo_perturbada_busca_local] = tempo_execucao_total  # Registra o FO e o tempo de execução
 
+        # Atualiza a melhor solução se a nova solução for melhor
         if fo_perturbada_busca_local < melhor_fo:
             melhor_solucao = solucao_atual
             melhor_fo = fo_perturbada_busca_local
-            tempo_para_melhor_fo = tempo_execucao_total  # Atualiza o tempo quando o melhor FO é encontrado
-            lista_tempo_melhor_fo.append(tempo_para_melhor_fo)
+            tempo_para_melhor_fo = tempo_execucao_total  # Atualiza o tempo para o melhor FO
+            lista_tempo_melhor_fo.append(tempo_para_melhor_fo)  # Armazena o tempo em que a solução foi encontrada
 
+    # Imprime os resultados da melhor solução encontrada durante a execução
     imprime_resultados(melhor_solucao, melhor_fo, tempo_execucao_total, "Melhor Solução Encontrada", log_file)
 
+    # Calcula o tempo médio para encontrar o melhor FO
     tempo_medio_para_melhor_fo = sum(lista_tempo_melhor_fo) / len(lista_tempo_melhor_fo) if lista_tempo_melhor_fo else 0
 
-    return melhor_solucao, melhor_fo, tempo_para_melhor_fo, tempo_execucao_total, tempo_medio_para_melhor_fo
+    # Retorna a melhor solução, o melhor FO, o tempo para encontrar o melhor FO, o tempo total de execução, e o tempo médio
+
 
 def executar_analise(melhores_fos, tempos_para_melhor_fo, tempos_totais, log_file):
     
