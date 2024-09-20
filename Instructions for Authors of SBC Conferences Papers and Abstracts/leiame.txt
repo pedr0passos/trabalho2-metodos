@@ -1,0 +1,27 @@
+Estrutura mínima do texto:
+
+
+- Título
+Exemplo: Um algoritmo GRASP para o Problema de Balanceamento de Linhas de Montagem
+
+- Nome do(s) autor(es)
+
+- Introdução 
+Apresentar o método definido e o problema (bem sucintamente, podendo ser em 1 parágrafo)
+
+-Metodologia
+	Subtópicos:
+	- Meta-Heurística XXX
+		Apresentação da Meta-Heurística.
+
+	- Solução Inicial
+	- Estrutura(s) de Vizinhança
+	- Busca Local (se houver)
+
+- Experimentos computacionais
+	- apresentar os parâmetros utilizados e os resultados, conforme descrição do trabalho 2.
+
+- Conclusões
+
+- Referências (se houver citação)
+
